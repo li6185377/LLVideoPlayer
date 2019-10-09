@@ -13,4 +13,13 @@
 
 - (instancetype)initWithURL:(NSURL *)streamURL;
 
+// preload buffer time
+@property (nonatomic, assign) NSTimeInterval preloadLimitTime;
+// is seeking
+@property (nonatomic, assign) BOOL seeking;
+// current palying time
+@property (nonatomic, assign) NSTimeInterval currentTime;
+// an NSArray of NSValues containing CMTimeRanges
+@property (nonatomic, copy) NSArray<NSValue *> *loadedTimeRanges;
+
 @end

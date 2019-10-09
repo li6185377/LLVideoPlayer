@@ -18,6 +18,8 @@
 #import "LLVideoPlayerDownloader.h"
 #import "LLVideoPlayerCacheManager.h"
 
+extern NSInteger const kLLVideoPlayerDefaultPreloadLength;
+
 #if defined DEBUG
 #define NSLog(...)  NSLog(__VA_ARGS__)
 #else
@@ -252,10 +254,20 @@ typedef void (^VoidBlock) (void);
     });
 }
 
+- (void)seekToTimeInSeconds:(float)time accurate:(BOOL)accurate completionHandler:(void (^)(BOOL))completionHandler {
+    self.resourceLoader.seeking = YES;
+    [self.avPlayer ll_seekToTimeInSeconds:time accurate:accurate completionHandler:^(BOOL finished) {
+        self.resourceLoader.seeking = NO;
+        if (completionHandler) {
+            completionHandler(finished);
+        }
+    }];
+}
+
 - (void)seekToTimeInSecond:(float)sec userAction:(BOOL)isUserAction completionHandler:(void (^)(BOOL finished))completionHandler
 {
     NSLog(@"seekToTimeInSecond: %f, userAction: %@", sec, isUserAction ? @"YES" : @"NO");
-    [self.avPlayer ll_seekToTimeInSeconds:sec accurate:self.accurateSeek completionHandler:completionHandler];
+    [self seekToTimeInSeconds:sec accurate:self.accurateSeek completionHandler:completionHandler];
 }
 
 - (void)seekToLastWatchedDuration
@@ -275,7 +287,7 @@ typedef void (^VoidBlock) (void);
         
         NSLog(@"Seeking to last watched duration: %f", lastWatchedTime);
         
-        [self.avPlayer ll_seekToTimeInSeconds:lastWatchedTime accurate:self.accurateSeek completionHandler:completionHandler];
+        [self seekToTimeInSeconds:lastWatchedTime accurate:self.accurateSeek completionHandler:completionHandler];
     });
 }
 
@@ -341,6 +353,9 @@ typedef void (^VoidBlock) (void);
     if ([self sessionCacheEnabled]) {
         asset = [[AVURLAsset alloc] initWithURL:[streamURL ll_customSchemeURL] options:nil];
         self.resourceLoader = [[LLVideoPlayerCacheLoader alloc] initWithURL:streamURL];
+        if (self.enableLazyLoading) {
+            self.resourceLoader.preloadLimitTime = 30;
+        }
         [asset.resourceLoader setDelegate:self.resourceLoader queue:dispatch_get_main_queue()];
     } else {
         asset = [[AVURLAsset alloc] initWithURL:streamURL options:nil];
@@ -528,9 +543,11 @@ typedef void (^VoidBlock) (void);
         
         /// loadedTimeRanges
         if ([keyPath isEqualToString:@"loadedTimeRanges"]) {
+            NSArray *loadedTimeRanges = self.avPlayerItem.loadedTimeRanges;
             if ([self.delegate respondsToSelector:@selector(videoPlayer:loadedTimeRanges:)]) {
-                [self.delegate videoPlayer:self loadedTimeRanges:self.avPlayerItem.loadedTimeRanges];
+                [self.delegate videoPlayer:self loadedTimeRanges:loadedTimeRanges];
             }
+            self.resourceLoader.loadedTimeRanges = loadedTimeRanges;
         }
     } else if (object == self.view.layer) {
         /// LLVideoPlayerView
@@ -567,8 +584,7 @@ typedef void (^VoidBlock) (void);
                         }
                     }
                 }];
-            }
-                break;
+            } break;
                 
             case LLVideoPlayerStateContentPaused:
                 break;
@@ -613,6 +629,9 @@ typedef void (^VoidBlock) (void);
     if ([self.delegate respondsToSelector:@selector(videoPlayer:didPlayFrame:)]) {
         [self.delegate videoPlayer:self didPlayFrame:timeInSeconds];
     }
+    
+    // 更新当前播放时间，保证底层缓存限制的准确性
+    self.resourceLoader.currentTime = timeInSeconds;
 }
 
 - (void)playerDidPlayToEnd:(NSNotification *)note
@@ -698,7 +717,7 @@ typedef void (^VoidBlock) (void);
               [LLVideoPlayerHelper playerStateToString:oldState],
               [LLVideoPlayerHelper playerStateToString:newState]);
         
-        _state = newState;
+        self->_state = newState;
         switch (newState) {
             case LLVideoPlayerStateContentLoading:
                 break;
@@ -757,7 +776,7 @@ typedef void (^VoidBlock) (void);
 
 - (double)currentBitRateInKbps
 {
-    return [self.avPlayerItem.accessLog.events.lastObject observedBitrate]/1000;
+    return [self.avPlayerItem.accessLog.events.lastObject observedBitrate] / 1000.0;
 }
 
 - (NSTimeInterval)currentTime
@@ -813,7 +832,7 @@ typedef void (^VoidBlock) (void);
 
 + (void)preloadWithURL:(NSURL *)url
 {
-    [self preloadWithURL:url bytes:(1 << 20)];
+    [self preloadWithURL:url bytes:kLLVideoPlayerDefaultPreloadLength];
 }
 
 + (void)preloadWithURL:(NSURL *)url bytes:(NSUInteger)bytes

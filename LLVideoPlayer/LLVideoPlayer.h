@@ -30,6 +30,9 @@
 @property (nonatomic, strong) LLVideoPlayerCachePolicy *cachePolicy;
 @property (nonatomic, assign) BOOL accurateSeek;
 
+// 开启懒加载模式，当 buffer 超过 30s 后，不会在加载更多内容， 默认：NO
+@property (nonatomic, assign) BOOL enableLazyLoading;
+
 - (instancetype)initWithVideoPlayerView:(LLVideoPlayerView *)videoPlayerView;
 
 #pragma mark - Load

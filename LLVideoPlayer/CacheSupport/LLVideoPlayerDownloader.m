@@ -10,7 +10,9 @@
 #import "LLVideoPlayerDownloadRequest.h"
 #import "LLVideoPlayerCacheUtils.h"
 
-#define kDefaultBytesLimit  (1 << 20)
+extern NSString * const kLLVideoPlayerCacheLoaderBusy;
+extern NSString * const kLLVideoPlayerCacheLoaderIdle;
+
 #define kDefaultConcurrentCount 2
 
 typedef NS_ENUM(NSInteger, LLVideoPlayerDownloaderState) {
@@ -52,6 +54,7 @@ static char kQueueSpecificKey[1];
 {
     self = [super init];
     if (self) {
+        _state = LLVideoPlayerDownloaderStateIdle;
         _queue = dispatch_queue_create("LLVideoPlayerDownloader", DISPATCH_QUEUE_SERIAL);
         dispatch_queue_set_specific(_queue, kQueueSpecificKey, (__bridge void *)_queue, NULL);
         _manager = [LLVideoPlayerCacheManager defaultManager];
@@ -60,11 +63,11 @@ static char kQueueSpecificKey[1];
         _pendingRequests = [NSMutableArray array];
         [[NSNotificationCenter defaultCenter] addObserver:self
                                                  selector:@selector(cacheLoaderBusy)
-                                                     name:@"LLVideoPlayerCacheLoaderBusy"
+                                                     name:kLLVideoPlayerCacheLoaderBusy
                                                    object:nil];
         [[NSNotificationCenter defaultCenter] addObserver:self
                                                  selector:@selector(cacheLoaderIdle)
-                                                     name:@"LLVideoPlayerCacheLoaderIdle"
+                                                     name:kLLVideoPlayerCacheLoaderIdle
                                                    object:nil];
     }
     return self;
@@ -82,11 +85,6 @@ static char kQueueSpecificKey[1];
             }
         });
     }
-}
-
-- (void)preloadWithURL:(NSURL *)url
-{
-    [self preloadWithURL:url bytes:kDefaultBytesLimit];
 }
 
 - (void)preloadWithURL:(NSURL *)url bytes:(NSUInteger)bytes
@@ -206,7 +204,7 @@ static char kQueueSpecificKey[1];
     }
     
     [self scheduleWithBlock:^{
-        _state = state;
+        self->_state = state;
         if (state == LLVideoPlayerDownloaderStateIdle) {
             [self processNextNoLock];
         } else if (state == LLVideoPlayerDownloaderStatePaused) {

@@ -5,14 +5,15 @@ Pod::Spec.new do |s|
 
   s.description      = <<-DESC
 LLVideoPlayer is a low level video player which is simple and easy to extend.
+Support lazy loading，limit download size.
                        DESC
 
   s.homepage         = 'https://github.com/huangguiyang/LLVideoPlayer'
   s.license          = { :type => 'MIT', :file => 'LICENSE' }
   s.author           = { 'mario' => 'guiyang.huang@gmail.com' }
-  s.source           = { :git => 'https://github.com/huangguiyang/LLVideoPlayer.git', :tag => s.version.to_s }
+  s.source           = { :git => 'https://github.com/li6185377/LLVideoPlayer.git', :branch => 'master' }
 
-  s.ios.deployment_target = '8.0'
+  s.ios.deployment_target = '9.0'
 
   s.public_header_files = 'LLVideoPlayer/*.h'
   s.source_files = 'LLVideoPlayer/*.{m,h}'

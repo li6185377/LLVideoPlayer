@@ -37,8 +37,20 @@
         _lock = [[NSRecursiveLock alloc] init];
         _operationQueue = [NSOperationQueue new];
         _operationQueue.maxConcurrentOperationCount = 1;    // serial queue
+        
+        // 获取请求长度
+        if (loadingRequest.dataRequest.requestsAllDataToEndOfResource) {
+            _requestedLength = NSIntegerMax;
+        } else {
+            _requestedLength = loadingRequest.dataRequest.requestedLength;
+        }
     }
     return self;
+}
+
+- (BOOL)isResumed
+{
+    return (self.taskQueue != nil);
 }
 
 - (void)resume
@@ -95,6 +107,7 @@
 
 - (void)operation:(NSOperation *)operation didReceiveData:(NSData *)data
 {
+    _realLoadingLength += data.length;
     [self.loadingRequest.dataRequest respondWithData:data];
 }
 
@@ -110,14 +123,16 @@
 
 - (void)startOperation
 {
-    // range
+    AVAssetResourceLoadingDataRequest *dataRequest = self.loadingRequest.dataRequest;
+    NSInteger requestedOffset = dataRequest.requestedOffset;
+    NSInteger requestedLength = self.requestedLength;
+    
     NSRange range;
-    if ([self.loadingRequest.dataRequest respondsToSelector:@selector(requestsAllDataToEndOfResource)] &&
-        self.loadingRequest.dataRequest.requestsAllDataToEndOfResource) {
-        range = NSMakeRange(self.loadingRequest.dataRequest.requestedOffset, NSIntegerMax);
+    if (self.limitLoadingLength > 0) {
+        // force limit segment max size: 2M
+        range = NSMakeRange(requestedOffset, MIN(self.limitLoadingLength, requestedLength));
     } else {
-        range = NSMakeRange(self.loadingRequest.dataRequest.requestedOffset,
-                            self.loadingRequest.dataRequest.requestedLength);
+        range = NSMakeRange(requestedOffset, requestedLength);
     }
     
     self.taskQueue = [NSMutableArray arrayWithCapacity:4];

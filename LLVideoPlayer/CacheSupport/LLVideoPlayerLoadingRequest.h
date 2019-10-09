@@ -23,7 +23,15 @@
                              cacheFile:(LLVideoPlayerCacheFile *)cacheFile;
 
 @property (nonatomic, strong, readonly) AVAssetResourceLoadingRequest *loadingRequest;
+@property (nonatomic, assign, readonly) NSInteger realLoadingLength;
+@property (nonatomic, assign, readonly) NSInteger requestedLength;
+
 @property (nonatomic, weak) id<LLVideoPlayerLoadingRequestDelegate> delegate;
+
+// 限制 一起请求的 data loading 大小，目前：2M
+@property (nonatomic, assign) NSInteger limitLoadingLength;
+// 是否开始执行加载
+- (BOOL)isResumed;
 
 - (void)resume;
 - (void)cancel;
