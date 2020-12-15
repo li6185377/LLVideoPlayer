@@ -29,9 +29,12 @@
 @property (nonatomic, assign) BOOL cacheSupportEnabled;
 @property (nonatomic, strong) LLVideoPlayerCachePolicy *cachePolicy;
 @property (nonatomic, assign) BOOL accurateSeek;
+@property (nonatomic, assign) BOOL autoReplay;
 
-// 开启懒加载模式，当 buffer 超过 30s 后，不会在加载更多内容， 默认：NO
+/// 开启懒加载模式，当 buffer 超过 30s 后，不会在加载更多内容， 默认：NO
 @property (nonatomic, assign) BOOL enableLazyLoading;
+/// 缓冲区数据可提供播放才开始播放视频 默认：NO
+@property (nonatomic, assign) BOOL keepUpStartPlay;
 
 - (instancetype)initWithVideoPlayerView:(LLVideoPlayerView *)videoPlayerView;
 

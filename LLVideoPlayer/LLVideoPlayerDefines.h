@@ -28,7 +28,8 @@ typedef NS_ENUM(NSInteger, LLVideoPlayerState) {
     LLVideoPlayerStateContentPlaying,
     LLVideoPlayerStateContentPaused,
     LLVideoPlayerStateDismissed,
-    LLVideoPlayerStateError
+    LLVideoPlayerStateError,
+    LLVideoPlayerStateContentReplay
 };
 
 #endif /* LLVideoPlayerDefines_h */

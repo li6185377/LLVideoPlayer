@@ -28,7 +28,7 @@
 
 @property (nonatomic, weak) id<LLVideoPlayerLoadingRequestDelegate> delegate;
 
-// 限制 一起请求的 data loading 大小，目前：2M
+// 限制  data loading 大小
 @property (nonatomic, assign) NSInteger limitLoadingLength;
 // 是否开始执行加载
 - (BOOL)isResumed;

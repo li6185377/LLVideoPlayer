@@ -33,7 +33,7 @@ typedef void (^VoidBlock) (void);
 @property (nonatomic, strong) id avTimeObserver;
 @property (nonatomic, strong) LLVideoPlayerCacheLoader *resourceLoader;
 @property (nonatomic, strong) NSMutableSet *failingURLs;
-@property (nonatomic, assign) NSInteger lastFrameTime;
+@property (nonatomic, assign) NSTimeInterval lastFrameTime;
 
 @end
 
@@ -410,7 +410,7 @@ typedef void (^VoidBlock) (void);
             __weak __typeof(self) weakSelf = self;
             avPlayer.volume = [AVAudioSession sharedInstance].outputVolume;
             [avPlayer addObserver:self forKeyPath:@"status" options:0 context:nil];
-            self.avTimeObserver = [avPlayer addPeriodicTimeObserverForInterval:CMTimeMake(1, 1) queue:NULL usingBlock:^(CMTime time) {
+            self.avTimeObserver = [avPlayer addPeriodicTimeObserverForInterval:CMTimeMake(1, 30) queue:NULL usingBlock:^(CMTime time) {
                 [weakSelf periodicTimeObserver:time];
             }];
         }
@@ -502,7 +502,9 @@ typedef void (^VoidBlock) (void);
                 case AVPlayerItemStatusReadyToPlay:
                     NSLog(@"AVPlayerItemStatusReadyToPlay");
                     if (self.avPlayer.status == AVPlayerStatusReadyToPlay) {
-                        [self handlePlayerItemReadyToPlay];
+                        if (!self.keepUpStartPlay) {
+                            [self handlePlayerItemReadyToPlay];
+                        }
                     }
                     break;
                 case AVPlayerItemStatusFailed:
@@ -531,6 +533,15 @@ typedef void (^VoidBlock) (void);
         
         if ([keyPath isEqualToString:@"playbackLikelyToKeepUp"]) {
             NSLog(@"playbackLikelyToKeepUp: %@", self.avPlayerItem.playbackLikelyToKeepUp ? @"YES" : @"NO");
+            if (self.keepUpStartPlay) {
+                if (self.state == LLVideoPlayerStateContentLoading && self.avPlayerItem.playbackLikelyToKeepUp) {
+                    [self handlePlayerItemReadyToPlay];
+                    if ([self.delegate respondsToSelector:@selector(videoPlayer:playbackLikelyToKeepUp:)]) {
+                        [self.delegate videoPlayer:self playbackLikelyToKeepUp:self.avPlayerItem.playbackLikelyToKeepUp];
+                    }
+                }
+            }
+
             if (self.state == LLVideoPlayerStateContentPlaying) {
                 if ([self.delegate respondsToSelector:@selector(videoPlayer:playbackLikelyToKeepUp:)]) {
                     [self.delegate videoPlayer:self playbackLikelyToKeepUp:self.avPlayerItem.playbackLikelyToKeepUp];
@@ -620,7 +631,7 @@ typedef void (^VoidBlock) (void);
         return;
     }
     
-    NSInteger thisSecond = (NSInteger)(timeInSeconds + 0.5f);
+    NSTimeInterval thisSecond = timeInSeconds + 0.5f;
     if (thisSecond == self.lastFrameTime) {
         return;
     }
@@ -645,11 +656,19 @@ typedef void (^VoidBlock) (void);
     
     // is current player's item
     ll_run_on_ui_thread(^{
-        [self clearPlayer];
-        self.track.isPlayedToEnd = YES;
-        self.state = LLVideoPlayerStateUnknown;
-        if ([self.delegate respondsToSelector:@selector(videoPlayerDidPlayToEnd:)]) {
-            [self.delegate videoPlayerDidPlayToEnd:self];
+        if (self.autoReplay) {
+            // 切换到0秒后，重新开始播放
+            self.state = LLVideoPlayerStateContentReplay;
+            [self seekToTimeInSecond:0 userAction:NO completionHandler:^(BOOL finished) {
+                self.state = LLVideoPlayerStateContentPlaying;
+            }];
+        } else {
+            [self clearPlayer];
+            self.track.isPlayedToEnd = YES;
+            self.state = LLVideoPlayerStateUnknown;
+            if ([self.delegate respondsToSelector:@selector(videoPlayerDidPlayToEnd:)]) {
+                [self.delegate videoPlayerDidPlayToEnd:self];
+            }
         }
     });
 }

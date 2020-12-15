@@ -17,6 +17,9 @@ static NSString *const kCustomSchemePrefix = @"ll-";
 - (NSURL *)ll_customSchemeURL
 {
     NSURLComponents *components = [[NSURLComponents alloc] initWithURL:self resolvingAgainstBaseURL:NO];
+    if (!components.scheme || components.scheme.length == 0) {
+        return self;
+    }
     if (NO == [components.scheme hasPrefix:kCustomSchemePrefix]) {
         components.scheme = [NSString stringWithFormat:@"%@%@", kCustomSchemePrefix, components.scheme];
     }
